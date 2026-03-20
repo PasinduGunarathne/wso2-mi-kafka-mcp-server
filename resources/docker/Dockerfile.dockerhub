@@ -1,10 +1,6 @@
 # WSO2 Micro Integrator with Kafka connector pre-installed
 # Uses the official WSO2 MI Docker image from Docker Hub.
-#
-# Usage:
-#   docker compose -f docker-compose.yml build wso2mi \
-#     --build-arg DOCKERFILE=Dockerfile.dockerhub \
-#     --build-arg MI_VERSION=4.4.0
+# No local ZIP needed.
 #
 # Available versions: 4.3.0, 4.4.0, 4.5.0
 # Variants: <version>, <version>-alpine, <version>-rocky
@@ -12,6 +8,7 @@
 ARG MI_VERSION=4.4.0
 FROM wso2/wso2mi:${MI_VERSION}
 
+ARG MI_VERSION
 ARG MI_HOME=/home/wso2carbon/wso2mi-${MI_VERSION}
 
 USER root
@@ -65,8 +62,33 @@ RUN curl -fsSL \
     "https://repo1.maven.org/maven2/com/yammer/metrics/metrics-core/2.2.0/metrics-core-2.2.0.jar" \
     -o ${MI_HOME}/lib/metrics-core-2.2.0.jar
 
-# ── 5. Copy pre-built Avro OSGi bundle with proper version exports ──────────────
-COPY org.apache.avro-1.11.3.jar ${MI_HOME}/dropins/org.apache.avro-1.11.3.jar
+# ── 5. Download and repackage Avro as OSGi bundle with versioned exports ────────
+# The standard avro JAR lacks versioned Export-Package headers, breaking OSGi resolution
+# against mi-inbound-kafka's Import-Package: org.apache.avro;version="[1.11,2)"
+ARG AVRO_VER=1.11.3
+RUN curl -fsSL \
+    "https://repo1.maven.org/maven2/org/apache/avro/avro/${AVRO_VER}/avro-${AVRO_VER}.jar" \
+    -o /tmp/avro-original.jar \
+    && mkdir -p /tmp/avro-osgi && cd /tmp/avro-osgi \
+    && unzip -q /tmp/avro-original.jar \
+    && printf '%s\n' \
+      'Manifest-Version: 1.0' \
+      "Bundle-ManifestVersion: 2" \
+      "Bundle-Name: Apache Avro" \
+      "Bundle-SymbolicName: org.apache.avro" \
+      "Bundle-Version: ${AVRO_VER}" \
+      "Export-Package: org.apache.avro;version=\"${AVRO_VER}\"," \
+      " org.apache.avro.data;version=\"${AVRO_VER}\"," \
+      " org.apache.avro.file;version=\"${AVRO_VER}\"," \
+      " org.apache.avro.generic;version=\"${AVRO_VER}\"," \
+      " org.apache.avro.io;version=\"${AVRO_VER}\"," \
+      " org.apache.avro.message;version=\"${AVRO_VER}\"," \
+      " org.apache.avro.reflect;version=\"${AVRO_VER}\"," \
+      " org.apache.avro.specific;version=\"${AVRO_VER}\"," \
+      " org.apache.avro.util;version=\"${AVRO_VER}\"" \
+      > META-INF/MANIFEST.MF \
+    && jar cfm ${MI_HOME}/dropins/org.apache.avro-${AVRO_VER}.jar META-INF/MANIFEST.MF -C /tmp/avro-osgi . \
+    && rm -rf /tmp/avro-osgi /tmp/avro-original.jar
 
 # ── 6. Copy WSO2 MI configuration ───────────────────────────────────────────────
 COPY conf/deployment.toml ${MI_HOME}/conf/deployment.toml
@@ -83,3 +105,5 @@ RUN chown -R wso2carbon:wso2carbon ${MI_HOME}/repository/deployment/server/synap
 USER wso2carbon
 
 EXPOSE 8290 8253 9164
+
+CMD ["sh", "-c", "${MI_HOME}/bin/micro-integrator.sh"]

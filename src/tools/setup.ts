@@ -46,22 +46,18 @@ export async function setupKafkaAndMI(args: {
   out(log.ok(`Created ${created.length} files in ${dir}`));
   out(log.info("Key files:"));
   out("    docker-compose.yml");
-  out("    wso2mi/Dockerfile          (downloads Kafka connector JARs)");
+  out("    wso2mi/Dockerfile.dockerhub (downloads Kafka connector JARs)");
   out("    wso2mi/conf/deployment.toml");
   out("    wso2mi/artifacts/apis/KafkaPublisherAPI.xml");
   out("    wso2mi/artifacts/inbound-endpoints/KafkaOrderConsumer.xml");
-  out("    wso2mi/artifacts/sequences/kafka-sequences.xml");
+  out("    wso2mi/artifacts/sequences/kafkaOrderProcessingSequence.xml");
+  out("    wso2mi/artifacts/sequences/kafkaFaultSequence.xml");
   out("");
 
   // ── STEP 3: Pull base images ──────────────────────────────────────────────
   out(log.step(3, TOTAL_STEPS, "Pulling Docker base images..."));
-  out(log.wait("Pulling confluentinc/cp-kafka:7.6.1 and eclipse-temurin:17-jre-jammy ..."));
-  for (const img of ["eclipse-temurin:17-jre-jammy"]) {
-    const r = await docker.pullImage(img);
-    if (r.ok) out(log.ok(`Pulled ${img}`));
-    else out(log.warn(`Pull may have failed for ${img} (might already be cached)`));
-  }
-  for (const img of ["confluentinc/cp-zookeeper:7.6.1", "confluentinc/cp-kafka:7.6.1"]) {
+  out(log.wait("Pulling base images..."));
+  for (const img of ["wso2/wso2mi:4.4.0", "confluentinc/cp-zookeeper:7.6.1", "confluentinc/cp-kafka:7.6.1"]) {
     const r = await docker.pullImage(img);
     if (r.ok) out(log.ok(`Pulled ${img}`));
     else out(log.warn(`Pull may have failed for ${img} (might already be cached)`));

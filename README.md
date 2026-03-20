@@ -53,18 +53,18 @@ claude mcp add kafka-mi node /absolute/path/to/wso2-mi-kafka-mcp-server/dist/ind
 
 ## MI Image Options
 
-The stack can be built from a **local MI distribution ZIP** or the **official WSO2 Docker Hub image**.
+The stack can be built from the **official WSO2 Docker Hub image** (default) or a **local MI distribution ZIP**.
 
-**Local pack (default):** Place `wso2mi-4.4.0.zip` in the generated `wso2mi/` directory.
+**Docker Hub image (default):** No local files needed — pulls `wso2/wso2mi` from Docker Hub.
 
 ```bash
 docker compose build wso2mi
 ```
 
-**Docker Hub image:** No local ZIP needed.
+**Local pack:** Place `wso2mi-<version>.zip` in the generated `wso2mi/` directory.
 
 ```bash
-MI_DOCKERFILE=Dockerfile.dockerhub docker compose build wso2mi
+MI_DOCKERFILE=Dockerfile docker compose build wso2mi
 ```
 
 **Version selection:** Set `MI_VERSION` (available: 4.3.0, 4.4.0, 4.5.0, with `-alpine` / `-rocky` variants for Docker Hub).
