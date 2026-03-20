@@ -7,7 +7,7 @@ BOOTSTRAP="${KAFKA_BOOTSTRAP:-localhost:9092}"
 
 echo "Creating Kafka topics..."
 
-for TOPIC in demo.orders.in demo.orders.audit; do
+for TOPIC in demo.orders.in demo.orders.audit demo.orders.dlq; do
   docker exec "$CONTAINER" kafka-topics \
     --bootstrap-server "$BOOTSTRAP" \
     --create --if-not-exists \

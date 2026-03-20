@@ -3,6 +3,7 @@
 
 import path from "path";
 import * as docker from "../utils/docker.js";
+import { CONTAINERS } from "../utils/docker.js";
 import { generateProjectFiles, projectDir } from "../utils/files.js";
 import * as log from "../utils/logger.js";
 
@@ -28,14 +29,14 @@ export async function setupKafkaAndMI(args: {
     const found = await docker.which(bin);
     if (!found) {
       return lines.join("\n") + "\n\n" +
-        log.err(`'${bin}' not found on PATH.\nPlease install Docker Desktop (https://docs.docker.com/get-docker/) and try again.`);
+        log.err(`'${bin}' not found on PATH.\nPlease install Docker Desktop or Rancher Desktop and try again.`);
     }
     out(log.ok(`${bin} found`));
   }
   const composeCheck = await docker.run("docker", ["compose", "version"]);
   if (!composeCheck.ok) {
     return lines.join("\n") + "\n\n" +
-      log.err("Docker Compose v2 not found.\nEnsure you have Docker Desktop ≥ 4.x or install the compose plugin.");
+      log.err("Docker Compose v2 not found.\nEnsure you have Docker Desktop, Rancher Desktop, or the compose plugin installed.");
   }
   out(log.ok(`docker compose ${composeCheck.stdout.match(/v[\d.]+/)?.[0] ?? "v2"} found`));
   out("");
@@ -100,7 +101,7 @@ export async function setupKafkaAndMI(args: {
   // ── STEP 6: Wait for Kafka ────────────────────────────────────────────────
   out(log.step(6, TOTAL_STEPS, "Waiting for Kafka broker to be healthy (up to 120s)..."));
   const kafkaReady = await docker.waitUntilHealthy(
-    "demo-kafka",
+    CONTAINERS.KAFKA,
     ["kafka-topics", "--bootstrap-server", "localhost:9092", "--list"],
     120_000,
     4_000
@@ -117,7 +118,7 @@ export async function setupKafkaAndMI(args: {
   // ── STEP 7: Create topics ─────────────────────────────────────────────────
   out(log.step(7, TOTAL_STEPS, "Creating Kafka topics..."));
   for (const topic of ["demo.orders.in", "demo.orders.audit", "demo.orders.dlq"]) {
-    const r = await docker.exec("demo-kafka", [
+    const r = await docker.exec(CONTAINERS.KAFKA, [
       "kafka-topics",
       "--bootstrap-server", "localhost:9092",
       "--create", "--if-not-exists",
@@ -138,7 +139,7 @@ export async function setupKafkaAndMI(args: {
   out(log.info("WSO2 MI startup takes ~60-90s on first run (JVM warm-up + artifact deploy)"));
 
   const miReady = await docker.waitUntilHealthy(
-    "demo-wso2mi",
+    CONTAINERS.WSO2MI,
     ["curl", "-sf", "http://localhost:9164/management/health"],
     180_000,
     8_000
@@ -210,13 +211,14 @@ async function smokePub(): Promise<{ ok: boolean; response?: string; error?: str
       "-sf", "-X", "POST",
       "http://localhost:8290/kafka/publish",
       "-H", "Content-Type: application/json",
+      "--max-time", "10",
       "-d", JSON.stringify({
         id: "smoke-001",
         customer: "SetupSmoke",
         event: "order-created",
         amount: 1.0,
       }),
-    ], { reject: false });
+    ], { reject: false, timeout: 15_000 });
     if (r.exitCode === 0 && r.stdout.includes("published")) {
       return { ok: true, response: r.stdout };
     }

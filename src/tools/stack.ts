@@ -2,6 +2,7 @@
 // start_stack, stop_stack, stack_status, show_logs, reset_environment
 
 import * as docker from "../utils/docker.js";
+import { CONTAINERS } from "../utils/docker.js";
 import { projectDir } from "../utils/files.js";
 import * as log from "../utils/logger.js";
 
@@ -64,14 +65,14 @@ export async function stackStatus(args: { projectPath?: string }): Promise<strin
     {
       name: "ZooKeeper",
       fn: async () => {
-        const r = await docker.exec("demo-zookeeper", ["bash", "-c", "echo ruok | nc localhost 2181"]);
+        const r = await docker.exec(CONTAINERS.ZOOKEEPER, ["bash", "-c", "echo ruok | nc localhost 2181"]);
         return r.stdout.trim() === "imok";
       },
     },
     {
       name: "Kafka broker",
       fn: async () => {
-        const r = await docker.exec("demo-kafka", [
+        const r = await docker.exec(CONTAINERS.KAFKA, [
           "kafka-topics", "--bootstrap-server", "localhost:9092", "--list",
         ]);
         return r.ok;
@@ -116,7 +117,7 @@ export async function stackStatus(args: { projectPath?: string }): Promise<strin
 
   // Kafka topics
   lines.push("Kafka Topics:");
-  const topicsR = await docker.exec("demo-kafka", [
+  const topicsR = await docker.exec(CONTAINERS.KAFKA, [
     "kafka-topics", "--bootstrap-server", "localhost:9092", "--list",
   ]);
   if (topicsR.ok) {

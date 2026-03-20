@@ -3,6 +3,7 @@
 
 import { execa } from "execa";
 import * as docker from "../utils/docker.js";
+import { CONTAINERS, sleep } from "../utils/docker.js";
 import * as log from "../utils/logger.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,7 +66,7 @@ export async function runDemo(args: {
   await sleep(5000); // Inbound endpoint polls every 1s; give it a few seconds
 
   // Check MI logs for consumption evidence
-  const miLogs = await docker.composeLogs("", "wso2mi", 30);
+  const miLogs = await docker.composeLogs(undefined, "wso2mi", 30);
   const consumeEvidence = miLogs.stdout.includes("KAFKA-CONSUME") ||
                           miLogs.stdout.includes("Event CONSUMED");
   if (consumeEvidence) {
@@ -143,7 +144,7 @@ export async function runHealthChecks(args: {
     return r.stdout.trim() === "imok";
   });
   await check("demo-kafka running", async () => {
-    const r = await docker.exec("demo-kafka", ["kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]);
+    const r = await docker.exec(CONTAINERS.KAFKA, ["kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]);
     return r.ok;
   });
   await check("demo-wso2mi running", async () => {
@@ -156,7 +157,7 @@ export async function runHealthChecks(args: {
   lines.push("── Kafka Topics ───────────────────────────────────────────────");
   for (const topic of ["demo.orders.in", "demo.orders.audit"]) {
     await check(`Topic '${topic}' exists`, async () => {
-      const r = await docker.exec("demo-kafka", [
+      const r = await docker.exec(CONTAINERS.KAFKA, [
         "kafka-topics", "--bootstrap-server", "localhost:9092",
         "--describe", "--topic", topic,
       ]);
@@ -222,14 +223,14 @@ async function httpPost(url: string, body: object): Promise<{ ok: boolean; body?
 async function readKafkaTopic(topic: string, maxMessages = 5): Promise<string[]> {
   try {
     const r = await execa("docker", [
-      "exec", "demo-kafka",
+      "exec", CONTAINERS.KAFKA,
       "kafka-console-consumer",
       "--bootstrap-server", "localhost:9092",
       "--topic", topic,
       "--from-beginning",
       "--max-messages", String(maxMessages),
       "--timeout-ms", "5000",
-    ], { reject: false });
+    ], { reject: false, timeout: 15_000 });
     return r.stdout
       .split("\n")
       .map(l => l.trim())
@@ -419,6 +420,3 @@ export async function checkDLQ(args: {
   return lines.join("\n");
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise(r => setTimeout(r, ms));
-}

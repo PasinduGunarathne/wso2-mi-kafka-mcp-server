@@ -82,12 +82,12 @@ export async function generateProjectFiles(baseDir: string): Promise<string[]> {
   await w("scripts/verify-stack.sh",   resource("scripts", "verify-stack.sh"));
   await w("scripts/bootstrap.sh",      resource("scripts", "bootstrap.sh"));
 
-  // Make scripts executable (Unix)
-  try {
+  // Make scripts executable (Unix only)
+  if (process.platform !== "win32") {
     for (const script of ["bootstrap.sh", "create-topics.sh", "test-publish.sh", "test-consume.sh", "verify-stack.sh"]) {
-      await execa("chmod", ["+x", path.join(baseDir, "scripts", script)]);
+      try { await execa("chmod", ["+x", path.join(baseDir, "scripts", script)]); } catch { /* ignore */ }
     }
-  } catch { /* Windows — skip chmod */ }
+  }
 
   return created;
 }

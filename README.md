@@ -20,7 +20,7 @@ HTTP Client ──POST /kafka/publish──> WSO2 MI ──kafkaTransport──>
 
 ## Prerequisites
 
-- Docker Desktop (with Compose v2)
+- Docker with Compose v2 (Docker Desktop, Rancher Desktop, or Colima)
 - Node.js >= 18
 
 ## Setup
