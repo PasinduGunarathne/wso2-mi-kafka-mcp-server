@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  {{NAME}} — Generated Kafka Inbound Endpoint
+  {{DESCRIPTION}}
+  Polls topic: {{TOPIC}} every {{POLL_INTERVAL}}ms
+-->
+<inboundEndpoint
+    name="{{NAME}}"
+    sequence="{{SEQUENCE}}"
+    onError="{{ON_ERROR}}"
+    class="org.wso2.carbon.inbound.kafka.KafkaMessageConsumer"
+    suspend="false"
+    xmlns="http://ws.apache.org/ns/synapse">
+
+    <parameters>
+        <parameter name="sequential">true</parameter>
+        <parameter name="interval">{{POLL_INTERVAL}}</parameter>
+        <parameter name="coordination">true</parameter>
+        <parameter name="inbound.behavior">polling</parameter>
+
+        <parameter name="bootstrap.servers">{{BOOTSTRAP_SERVERS}}</parameter>
+        <parameter name="group.id">{{GROUP_ID}}</parameter>
+        <parameter name="topic.name">{{TOPIC}}</parameter>
+
+        <parameter name="poll.timeout">100</parameter>
+        <parameter name="contentType">application/json</parameter>
+
+        <parameter name="key.deserializer">
+            org.apache.kafka.common.serialization.StringDeserializer
+        </parameter>
+        <parameter name="value.deserializer">
+            org.apache.kafka.common.serialization.StringDeserializer
+        </parameter>
+
+        <parameter name="enable.auto.commit">true</parameter>
+        <parameter name="auto.commit.interval.ms">1000</parameter>
+        <parameter name="auto.offset.reset">latest</parameter>
+        <parameter name="max.poll.records">100</parameter>
+        <parameter name="session.timeout.ms">30000</parameter>
+        <parameter name="heartbeat.interval.ms">3000</parameter>
+    </parameters>
+
+</inboundEndpoint>

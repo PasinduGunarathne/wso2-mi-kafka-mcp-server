@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  {{NAME}} — Generated WSO2 MI API
+  {{DESCRIPTION}}
+-->
+<api context="{{CONTEXT}}" name="{{NAME}}" xmlns="http://ws.apache.org/ns/synapse">
+
+    <resource methods="{{METHODS}}" uri-template="/*">
+        <inSequence>
+
+            <log level="custom" category="INFO">
+                <property name="ACTION"  value="[{{NAME}}] Request received"/>
+                <property name="PAYLOAD" expression="json-eval($)"/>
+            </log>
+
+            <!-- TODO: Add your integration logic here -->
+
+            <payloadFactory media-type="json">
+                <format>{"status":"ok","api":"{{NAME}}"}</format>
+                <args/>
+            </payloadFactory>
+            <property name="HTTP_SC"     value="200"              scope="axis2"/>
+            <property name="messageType" value="application/json" scope="axis2"/>
+            <respond/>
+
+        </inSequence>
+
+        <faultSequence>
+            <log level="full" category="ERROR">
+                <property name="ACTION"        value="[{{NAME}}] Error"/>
+                <property name="ERROR_CODE"    expression="get-property('ERROR_CODE')"/>
+                <property name="ERROR_MESSAGE" expression="get-property('ERROR_MESSAGE')"/>
+            </log>
+            <payloadFactory media-type="json">
+                <format>{"error":"Internal error","code":"$1","detail":"$2"}</format>
+                <args>
+                    <arg expression="get-property('ERROR_CODE')"/>
+                    <arg expression="get-property('ERROR_MESSAGE')"/>
+                </args>
+            </payloadFactory>
+            <property name="HTTP_SC"     value="500"              scope="axis2"/>
+            <property name="messageType" value="application/json" scope="axis2"/>
+            <respond/>
+        </faultSequence>
+    </resource>
+
+    <resource methods="GET" uri-template="/health">
+        <inSequence>
+            <payloadFactory media-type="json">
+                <format>{"status":"ok","service":"{{NAME}}","version":"1.0"}</format>
+                <args/>
+            </payloadFactory>
+            <respond/>
+        </inSequence>
+        <faultSequence/>
+    </resource>
+
+</api>
