@@ -1,0 +1,14 @@
+{
+  "_instructions": [
+    "1. npm install && npm run build",
+    "2. Copy the 'kafka-mi' block into your Claude Desktop / Claude Code MCP config",
+    "3. Replace /ABSOLUTE/PATH/TO with the real path to this project",
+    "4. Restart Claude Desktop"
+  ],
+  "mcpServers": {
+    "kafka-mi": {
+      "command": "node",
+      "args": ["/ABSOLUTE/PATH/TO/wso2-mi-kafka-mcp-server/dist/index.js"]
+    }
+  }
+}

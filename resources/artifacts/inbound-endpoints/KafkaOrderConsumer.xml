@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  KafkaOrderConsumer — Kafka Inbound Endpoint
+  ────────────────────────────────────────────
+  Polls topic: demo.orders.in every 1 second.
+  Dispatches each consumed message to: kafkaOrderProcessingSequence
+
+  IMPORTANT: This uses the class-based inbound endpoint.
+    class="org.wso2.carbon.inbound.kafka.KafkaMessageConsumer"
+  This class is provided by the esb-inbound-kafka JAR placed in MI dropins/.
+
+  Context properties injected by the Kafka inbound transport:
+    - topic       : name of the consumed topic
+    - partitionNo : partition number
+    - offset      : message offset
+    - messageValue: raw message value (same as SOAP body)
+-->
+<inboundEndpoint
+    name="KafkaOrderConsumer"
+    sequence="kafkaOrderProcessingSequence"
+    onError="kafkaFaultSequence"
+    class="org.wso2.carbon.inbound.kafka.KafkaMessageConsumer"
+    suspend="false"
+    xmlns="http://ws.apache.org/ns/synapse">
+
+    <parameters>
+        <!-- Polling behaviour -->
+        <parameter name="sequential">true</parameter>
+        <parameter name="interval">1000</parameter>
+        <parameter name="coordination">true</parameter>
+        <parameter name="inbound.behavior">polling</parameter>
+
+        <!-- Kafka connection — uses Docker internal hostname -->
+        <parameter name="bootstrap.servers">kafka:29092</parameter>
+        <parameter name="group.id">wso2-mi-order-consumers</parameter>
+
+        <!-- Topic to consume -->
+        <parameter name="topic.name">demo.orders.in</parameter>
+
+        <!-- Poll timeout in ms -->
+        <parameter name="poll.timeout">100</parameter>
+
+        <!-- Content type of consumed messages -->
+        <parameter name="contentType">application/json</parameter>
+
+        <!-- Deserializers -->
+        <parameter name="key.deserializer">
+            org.apache.kafka.common.serialization.StringDeserializer
+        </parameter>
+        <parameter name="value.deserializer">
+            org.apache.kafka.common.serialization.StringDeserializer
+        </parameter>
+
+        <!-- Auto commit -->
+        <parameter name="enable.auto.commit">true</parameter>
+        <parameter name="auto.commit.interval.ms">1000</parameter>
+        <parameter name="auto.offset.reset">latest</parameter>
+
+        <!-- Throughput -->
+        <parameter name="max.poll.records">100</parameter>
+        <parameter name="fetch.min.bytes">1</parameter>
+
+        <!-- Network reliability -->
+        <parameter name="session.timeout.ms">30000</parameter>
+        <parameter name="heartbeat.interval.ms">3000</parameter>
+        <parameter name="reconnect.backoff.ms">1000</parameter>
+    </parameters>
+
+</inboundEndpoint>

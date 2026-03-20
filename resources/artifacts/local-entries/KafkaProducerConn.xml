@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Kafka Producer Connection — reusable init config for the Kafka connector.
+  Referenced by KafkaPublisherAPI via configKey="KAFKA_PRODUCER_CONN".
+
+  bootstrap.servers uses the Docker service name "kafka" on port 29092
+  (internal Docker network). From the host machine, localhost:9092 is exposed.
+-->
+<localEntry key="KAFKA_PRODUCER_CONN" xmlns="http://ws.apache.org/ns/synapse">
+    <kafkaTransport.init>
+        <name>KAFKA_PRODUCER_CONN</name>
+        <bootstrapServers>kafka:29092</bootstrapServers>
+        <keySerializerClass>org.apache.kafka.common.serialization.StringSerializer</keySerializerClass>
+        <valueSerializerClass>org.apache.kafka.common.serialization.StringSerializer</valueSerializerClass>
+        <acks>all</acks>
+        <retries>3</retries>
+        <batchSize>16384</batchSize>
+        <lingerMs>5</lingerMs>
+        <bufferMemory>33554432</bufferMemory>
+        <maxBlockMs>10000</maxBlockMs>
+    </kafkaTransport.init>
+</localEntry>

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sequence name="kafkaOrderProcessingSequence" xmlns="http://ws.apache.org/ns/synapse"
+          onError="kafkaFaultSequence">
+
+    <!-- Step 1: Log Kafka metadata (offset, partition, topic) -->
+    <log level="custom" category="INFO">
+        <property name="ACTION"     value="[KAFKA-CONSUME] Message received from Kafka"/>
+        <property name="topic"      expression="get-property('topic')"/>
+        <property name="partition"  expression="get-property('partitionNo')"/>
+        <property name="offset"     expression="get-property('offset')"/>
+        <property name="messageVal" expression="get-property('messageValue')"/>
+    </log>
+
+    <!-- Step 2: Set content type for JSON processing -->
+    <property name="messageType"  value="application/json"  scope="axis2"/>
+    <property name="ContentType"  value="application/json"  scope="axis2"/>
+
+    <!-- Step 3: Extract fields from JSON payload -->
+    <property name="orderId"   expression="json-eval($.id)"       scope="default"/>
+    <property name="customer"  expression="json-eval($.customer)"  scope="default"/>
+    <property name="event"     expression="json-eval($.event)"     scope="default"/>
+    <property name="amount"    expression="json-eval($.amount)"    scope="default"/>
+
+    <!-- Step 4: Validate required fields — route invalid messages to DLQ -->
+    <filter source="get-property('orderId')" regex="null|^$">
+        <then>
+            <log level="custom" category="ERROR">
+                <property name="ACTION" value="[KAFKA-CONSUME] Validation failed: missing 'id' field"/>
+                <property name="messageVal" expression="get-property('messageValue')"/>
+            </log>
+            <property name="ERROR_CODE"    value="VALIDATION_ERROR" scope="default"/>
+            <property name="ERROR_MESSAGE" value="Missing required field: id" scope="default"/>
+            <property name="ERROR_DETAIL"  value="The consumed message does not contain a valid 'id' field" scope="default"/>
+            <sequence key="kafkaFaultSequence"/>
+        </then>
+    </filter>
+
+    <filter source="get-property('event')" regex="null|^$">
+        <then>
+            <log level="custom" category="ERROR">
+                <property name="ACTION" value="[KAFKA-CONSUME] Validation failed: missing 'event' field"/>
+                <property name="orderId" expression="get-property('orderId')"/>
+            </log>
+            <property name="ERROR_CODE"    value="VALIDATION_ERROR" scope="default"/>
+            <property name="ERROR_MESSAGE" value="Missing required field: event" scope="default"/>
+            <property name="ERROR_DETAIL"  value="The consumed message does not contain a valid 'event' field" scope="default"/>
+            <sequence key="kafkaFaultSequence"/>
+        </then>
+    </filter>
+
+    <!-- Step 5: Log full payload for demo visibility -->
+    <log level="custom" category="INFO">
+        <property name="ACTION"   value="[KAFKA-CONSUME] Processing order event"/>
+        <property name="orderId"  expression="get-property('orderId')"/>
+        <property name="customer" expression="get-property('customer')"/>
+        <property name="event"    expression="get-property('event')"/>
+    </log>
+
+    <!-- Step 6: Branch on event type -->
+    <switch source="get-property('event')">
+
+        <case regex="order-created">
+            <log level="custom" category="INFO">
+                <property name="ACTION"  value="[KAFKA-CONSUME] Handling NEW order-created event"/>
+                <property name="orderId" expression="get-property('orderId')"/>
+            </log>
+        </case>
+
+        <case regex="order-cancelled">
+            <log level="custom" category="WARN">
+                <property name="ACTION"  value="[KAFKA-CONSUME] Handling order-cancelled event"/>
+                <property name="orderId" expression="get-property('orderId')"/>
+            </log>
+        </case>
+
+        <case regex="order-error">
+            <!-- Intentional error trigger for testing DLQ flow -->
+            <log level="custom" category="ERROR">
+                <property name="ACTION"  value="[KAFKA-CONSUME] Simulated processing error triggered"/>
+                <property name="orderId" expression="get-property('orderId')"/>
+            </log>
+            <property name="ERROR_CODE"    value="PROCESSING_ERROR" scope="default"/>
+            <property name="ERROR_MESSAGE" value="Simulated processing error for testing" scope="default"/>
+            <property name="ERROR_DETAIL"  expression="fn:concat('Order ', get-property('orderId'), ' triggered a simulated error')" scope="default"/>
+            <sequence key="kafkaFaultSequence"/>
+        </case>
+
+        <default>
+            <log level="custom" category="WARN">
+                <property name="ACTION" value="[KAFKA-CONSUME] Unknown event type"/>
+                <property name="event"  expression="get-property('event')"/>
+            </log>
+        </default>
+
+    </switch>
+
+    <!-- Step 7: Enrich payload with processing metadata -->
+    <payloadFactory media-type="json">
+        <format>
+        {
+          "id":           "$1",
+          "customer":     "$2",
+          "event":        "$3",
+          "amount":       $4,
+          "processedBy":  "wso2-mi",
+          "status":       "CONSUMED",
+          "processedAt":  "$5"
+        }
+        </format>
+        <args>
+            <arg expression="get-property('orderId')"/>
+            <arg expression="get-property('customer')"/>
+            <arg expression="get-property('event')"/>
+            <arg expression="get-property('amount')"/>
+            <arg expression="get-property('SYSTEM_DATE', 'yyyy-MM-dd HH:mm:ss')"/>
+        </args>
+    </payloadFactory>
+
+    <!-- Step 8: Publish enriched event to audit topic -->
+    <kafkaTransport.publishMessages configKey="KAFKA_PRODUCER_CONN">
+        <topic>demo.orders.audit</topic>
+        <partitionNo>0</partitionNo>
+    </kafkaTransport.publishMessages>
+
+    <!-- Step 9: Final evidence log -->
+    <log level="custom" category="INFO">
+        <property name="ACTION"  value="[KAFKA-CONSUME] Event CONSUMED and forwarded to demo.orders.audit"/>
+        <property name="orderId" expression="get-property('orderId')"/>
+    </log>
+
+</sequence>

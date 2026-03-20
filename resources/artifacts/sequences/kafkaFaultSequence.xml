@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sequence name="kafkaFaultSequence" xmlns="http://ws.apache.org/ns/synapse">
+
+    <!-- Step 1: Log the full error details -->
+    <log level="full" category="ERROR">
+        <property name="ACTION"        value="[KAFKA-FAULT] Error in Kafka consumer sequence"/>
+        <property name="topic"         expression="get-property('topic')"/>
+        <property name="partition"     expression="get-property('partitionNo')"/>
+        <property name="offset"        expression="get-property('offset')"/>
+        <property name="ERROR_CODE"    expression="get-property('ERROR_CODE')"/>
+        <property name="ERROR_MESSAGE" expression="get-property('ERROR_MESSAGE')"/>
+        <property name="ERROR_DETAIL"  expression="get-property('ERROR_DETAIL')"/>
+    </log>
+
+    <!-- Step 2: Capture the original message payload before overwriting -->
+    <property name="ORIGINAL_PAYLOAD" expression="json-eval($)" scope="default"/>
+
+    <!-- Step 3: Build DLQ payload with error context -->
+    <payloadFactory media-type="json">
+        <format>
+        {
+          "error":          true,
+          "errorCode":      "$1",
+          "errorMessage":   "$2",
+          "errorDetail":    "$3",
+          "originalTopic":  "$4",
+          "partition":      "$5",
+          "offset":         "$6",
+          "originalPayload":"$7",
+          "failedAt":       "$8",
+          "retryable":      true
+        }
+        </format>
+        <args>
+            <arg expression="get-property('ERROR_CODE')"/>
+            <arg expression="get-property('ERROR_MESSAGE')"/>
+            <arg expression="get-property('ERROR_DETAIL')"/>
+            <arg expression="get-property('topic')"/>
+            <arg expression="get-property('partitionNo')"/>
+            <arg expression="get-property('offset')"/>
+            <arg expression="get-property('ORIGINAL_PAYLOAD')"/>
+            <arg expression="get-property('SYSTEM_DATE', 'yyyy-MM-dd HH:mm:ss')"/>
+        </args>
+    </payloadFactory>
+
+    <!-- Step 4: Publish failed message to Dead Letter Queue -->
+    <kafkaTransport.publishMessages configKey="KAFKA_PRODUCER_CONN">
+        <topic>demo.orders.dlq</topic>
+        <partitionNo>0</partitionNo>
+    </kafkaTransport.publishMessages>
+
+    <!-- Step 5: Log DLQ publish confirmation -->
+    <log level="custom" category="ERROR">
+        <property name="ACTION"  value="[KAFKA-FAULT] Failed message sent to DLQ (demo.orders.dlq)"/>
+        <property name="offset"  expression="get-property('offset')"/>
+        <property name="topic"   expression="get-property('topic')"/>
+    </log>
+
+</sequence>

@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  KafkaPublisherAPI
+  ─────────────────
+  POST http://localhost:8290/kafka/publish
+
+  Sample body:
+  {
+    "id": "1001",
+    "customer": "Alice",
+    "event": "order-created",
+    "amount": 125.50
+  }
+
+  The API validates, enriches, logs, and publishes to topic: demo.orders.in
+-->
+<api context="/kafka" name="KafkaPublisherAPI" xmlns="http://ws.apache.org/ns/synapse">
+
+    <resource methods="POST" uri-template="/publish">
+        <inSequence>
+
+            <!-- 1. Log incoming request -->
+            <log level="custom" category="INFO">
+                <property name="ACTION"  value="[KAFKA-PUBLISH] Received publish request"/>
+                <property name="PAYLOAD" expression="json-eval($)"/>
+            </log>
+
+            <!-- 2. Validate required fields -->
+            <filter source="json-eval($.id)" regex="null">
+                <then>
+                    <payloadFactory media-type="json">
+                        <format>{"error":"Missing required fields: id and event are mandatory"}</format>
+                        <args/>
+                    </payloadFactory>
+                    <property name="HTTP_SC" value="400" scope="axis2"/>
+                    <respond/>
+                </then>
+            </filter>
+
+            <!-- 3. Extract and stash fields -->
+            <property name="orderId"   expression="json-eval($.id)"       scope="default"/>
+            <property name="customer"  expression="json-eval($.customer)"  scope="default"/>
+            <property name="event"     expression="json-eval($.event)"     scope="default"/>
+            <property name="amount"    expression="json-eval($.amount)"    scope="default"/>
+
+            <!-- 4. Enrich payload with metadata before publishing -->
+            <payloadFactory media-type="json">
+                <format>
+                {
+                  "id":          "$1",
+                  "customer":    "$2",
+                  "event":       "$3",
+                  "amount":      $4,
+                  "publishedBy": "wso2-mi",
+                  "publishedAt": "$5",
+                  "status":      "PUBLISHED"
+                }
+                </format>
+                <args>
+                    <arg expression="get-property('orderId')"/>
+                    <arg expression="get-property('customer')"/>
+                    <arg expression="get-property('event')"/>
+                    <arg expression="get-property('amount')"/>
+                    <arg expression="get-property('SYSTEM_DATE', 'yyyy-MM-dd HH:mm:ss')"/>
+                </args>
+            </payloadFactory>
+
+            <!-- 5. Publish to Kafka topic: demo.orders.in -->
+            <kafkaTransport.publishMessages configKey="KAFKA_PRODUCER_CONN">
+                <topic>demo.orders.in</topic>
+                <partitionNo>0</partitionNo>
+            </kafkaTransport.publishMessages>
+
+            <!-- 6. Success response -->
+            <payloadFactory media-type="json">
+                <format>
+                {
+                  "status":    "published",
+                  "topic":     "demo.orders.in",
+                  "orderId":   "$1",
+                  "event":     "$2",
+                  "timestamp": "$3",
+                  "message":   "Event successfully published to Kafka"
+                }
+                </format>
+                <args>
+                    <arg expression="get-property('orderId')"/>
+                    <arg expression="get-property('event')"/>
+                    <arg expression="get-property('SYSTEM_DATE', 'yyyy-MM-dd HH:mm:ss')"/>
+                </args>
+            </payloadFactory>
+            <property name="HTTP_SC"           value="200"              scope="axis2"/>
+            <property name="messageType"       value="application/json" scope="axis2"/>
+            <property name="ContentType"       value="application/json" scope="axis2"/>
+            <respond/>
+
+        </inSequence>
+
+        <faultSequence>
+            <log level="full" category="ERROR">
+                <property name="ACTION"        value="[KAFKA-PUBLISH] Error publishing to Kafka"/>
+                <property name="ERROR_CODE"    expression="get-property('ERROR_CODE')"/>
+                <property name="ERROR_MESSAGE" expression="get-property('ERROR_MESSAGE')"/>
+            </log>
+            <payloadFactory media-type="json">
+                <format>{"error":"Failed to publish event","code":"$1","detail":"$2"}</format>
+                <args>
+                    <arg expression="get-property('ERROR_CODE')"/>
+                    <arg expression="get-property('ERROR_MESSAGE')"/>
+                </args>
+            </payloadFactory>
+            <property name="HTTP_SC"     value="500"              scope="axis2"/>
+            <property name="messageType" value="application/json" scope="axis2"/>
+            <respond/>
+        </faultSequence>
+    </resource>
+
+    <!-- Health probe endpoint -->
+    <resource methods="GET" uri-template="/health">
+        <inSequence>
+            <payloadFactory media-type="json">
+                <format>{"status":"ok","service":"KafkaPublisherAPI","version":"1.0"}</format>
+                <args/>
+            </payloadFactory>
+            <respond/>
+        </inSequence>
+        <faultSequence/>
+    </resource>
+
+</api>
