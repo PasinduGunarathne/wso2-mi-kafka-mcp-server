@@ -16,13 +16,13 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ── 1. Create wso2carbon user ────────────────────────────────────────────────────
-RUN groupadd -r wso2carbon && useradd -r -g wso2carbon -m -d /home/wso2carbon wso2carbon
+RUN groupadd -r wso2 && useradd -r -g wso2 -m -d /home/wso2carbon wso2carbon
 
 # ── 2. Copy and extract the local MI distribution ────────────────────────────────
 COPY wso2mi-${MI_VERSION}.zip /tmp/wso2mi.zip
 RUN unzip -q /tmp/wso2mi.zip -d /home/wso2carbon \
     && rm /tmp/wso2mi.zip \
-    && chown -R wso2carbon:wso2carbon ${MI_HOME}
+    && chown -R wso2carbon:wso2 ${MI_HOME}
 
 # ── 3. Download Kafka connector ZIP into synapse-libs directory ─────────────────
 ARG KAFKA_CONN_VER=3.2.0
@@ -30,7 +30,7 @@ RUN mkdir -p ${MI_HOME}/repository/deployment/server/synapse-libs \
     && curl -fsSL \
     "https://github.com/wso2-extensions/esb-connector-kafka/releases/download/v${KAFKA_CONN_VER}/kafkaTransport-connector-${KAFKA_CONN_VER}.zip" \
     -o ${MI_HOME}/repository/deployment/server/synapse-libs/kafkaTransport-connector-${KAFKA_CONN_VER}.zip \
-    && chown -R wso2carbon:wso2carbon ${MI_HOME}/repository/deployment/server/synapse-libs
+    && chown -R wso2carbon:wso2 ${MI_HOME}/repository/deployment/server/synapse-libs
 
 # ── 4. Download Kafka inbound endpoint ZIP from GitHub Releases ──────────────────
 ARG KAFKA_INBOUND_VER=2.0.6
@@ -52,7 +52,7 @@ RUN curl -fsSL \
     && curl -fsSL \
     "https://repo1.maven.org/maven2/org/wso2/orbit/io/confluent/kafka-schema-registry-client/7.6.0.wso2v1/kafka-schema-registry-client-7.6.0.wso2v1.jar" \
     -o ${MI_HOME}/dropins/kafka-schema-registry-client-7.6.0.wso2v1.jar \
-    && chown -R wso2carbon:wso2carbon ${MI_HOME}/dropins/
+    && chown -R wso2carbon:wso2 ${MI_HOME}/dropins/
 
 # ── 6. Download Kafka client JARs and dependencies (lib) ─────────────────────────
 RUN curl -fsSL \
@@ -105,7 +105,7 @@ COPY artifacts/apis/             ${MI_HOME}/repository/deployment/server/synapse
 COPY artifacts/sequences/        ${MI_HOME}/repository/deployment/server/synapse-configs/default/sequences/
 COPY artifacts/inbound-endpoints/ ${MI_HOME}/repository/deployment/server/synapse-configs/default/inbound-endpoints/
 COPY artifacts/imports/          ${MI_HOME}/repository/deployment/server/synapse-configs/default/imports/
-RUN chown -R wso2carbon:wso2carbon ${MI_HOME}/repository/deployment/server/synapse-configs/default/
+RUN chown -R wso2carbon:wso2 ${MI_HOME}/repository/deployment/server/synapse-configs/default/
 
 # ── 9. Switch to wso2carbon user ────────────────────────────────────────────────
 USER wso2carbon
