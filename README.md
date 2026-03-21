@@ -1,22 +1,24 @@
 # WSO2 MI + Kafka MCP Server
 
-A local development platform that lets you control Apache Kafka and WSO2 Micro Integrator directly from Claude. One prompt sets up the entire stack. 25 MCP tools handle everything after that — topic management, message publishing, artifact generation, diagnostics, and more.
+A local development platform that lets you control Apache Kafka and WSO2 Micro Integrator directly from your AI agent. One prompt sets up the entire stack. 26 MCP tools handle everything after that — topic management, message publishing, artifact generation, diagnostics, and more.
 
-**The core outcome:** You clone this repo, register it with Claude, say *"setup kafka and mi"*, and get a fully working Kafka + WSO2 MI integration stack running in Docker — no manual Docker commands, no YAML editing, no configuration steps.
+Works with **Claude Desktop**, **Claude Code**, **Cursor**, **Windsurf**, **Codex**, **Zed**, **Continue.dev**, and any MCP-compatible client.
+
+**The core outcome:** You clone this repo, register it with your AI client, say *"setup kafka and mi"*, and get a fully working Kafka + WSO2 MI integration stack running in Docker — no manual Docker commands, no YAML editing, no configuration steps.
 
 ## What You Get
 
 - A running Kafka broker, ZooKeeper, Kafka UI, and WSO2 Micro Integrator — all in Docker
 - A working demo flow: HTTP POST → Kafka → WSO2 MI consumer → enriched audit topic
 - Error handling with a Dead Letter Queue (DLQ)
-- 25 MCP tools to manage topics, publish/consume messages, generate MI artifacts, trace message flows, and troubleshoot
+- 26 MCP tools to manage topics, publish/consume messages, generate MI artifacts, trace message flows, and troubleshoot
 - Everything controlled through natural language in Claude
 
 ## Who This Is For
 
 - **Integration engineers** building Kafka + WSO2 MI flows locally
 - **Developers** who want a one-command local Kafka/MI stack for testing
-- **Claude Desktop or Claude Code users** who want to manage infrastructure through conversation
+- **AI-assisted developers** using any MCP-compatible client: Claude Desktop, Claude Code, Cursor, Windsurf, Codex, Zed, Continue.dev, or others
 
 ## Quick Start
 
@@ -57,51 +59,176 @@ Example output: `/Users/you/wso2-mi-kafka-mcp-server/dist/index.js`
 
 ### Step 4: Register the MCP server
 
-Choose **one** — Claude Desktop or Claude Code.
+This server uses **stdio transport** — the universal MCP standard. It works with any MCP-compatible AI client. Pick your client below.
 
-#### Option A: Claude Desktop
+> **In all examples below**, replace `/absolute/path/to` with the actual path you got in Step 3.
+
+---
+
+#### Claude Desktop
 
 Open (or create) the config file:
 
 - **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
-Add this block (replace the path with your actual path from Step 3):
+```json
+{
+  "mcpServers": {
+    "kafka-mi": {
+      "command": "node",
+      "args": ["/absolute/path/to/wso2-mi-kafka-mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+**Restart:** Fully quit and reopen Claude Desktop (not just close the window).
+**Verify:** Look for the hammer/tools icon in a new conversation → should see `setup_kafka_and_mi`.
+
+---
+
+#### Claude Code (CLI)
+
+```bash
+claude mcp add kafka-mi node /absolute/path/to/wso2-mi-kafka-mcp-server/dist/index.js
+```
+
+**Verify:** `claude mcp list` → should show `kafka-mi`.
+
+---
+
+#### Cursor
+
+Open **Settings → MCP** (or `Cmd/Ctrl+Shift+P` → "MCP: Add Server"), then add to your MCP config:
 
 ```json
 {
   "mcpServers": {
     "kafka-mi": {
       "command": "node",
-      "args": ["/Users/you/wso2-mi-kafka-mcp-server/dist/index.js"]
+      "args": ["/absolute/path/to/wso2-mi-kafka-mcp-server/dist/index.js"]
     }
   }
 }
 ```
 
-Then **quit and reopen Claude Desktop** (not just close the window — fully quit the app).
+**Restart:** Restart Cursor or reload the window.
+**Verify:** Open the MCP panel → `kafka-mi` should show as connected with 26 tools.
 
-**How to verify:** Open a new conversation and look for a hammer/tools icon. Click it — you should see tools starting with `setup_kafka_and_mi`.
+---
 
-#### Option B: Claude Code
+#### Windsurf (Codeium)
 
-Run this command (replace the path with your actual path from Step 3):
+Open **Settings → MCP Servers** (or `Cmd/Ctrl+Shift+P` → "MCP: Configure"), then add:
 
-```bash
-claude mcp add kafka-mi node /Users/you/wso2-mi-kafka-mcp-server/dist/index.js
+```json
+{
+  "mcpServers": {
+    "kafka-mi": {
+      "command": "node",
+      "args": ["/absolute/path/to/wso2-mi-kafka-mcp-server/dist/index.js"]
+    }
+  }
+}
 ```
 
-**How to verify:** Run `claude mcp list` and confirm `kafka-mi` appears.
+**Restart:** Reload the Windsurf window.
+**Verify:** MCP servers panel should show `kafka-mi` as active.
+
+---
+
+#### Codex (OpenAI CLI)
+
+Add to your `~/.codex/config.json` (or project `.codex/config.json`):
+
+```json
+{
+  "mcpServers": {
+    "kafka-mi": {
+      "command": "node",
+      "args": ["/absolute/path/to/wso2-mi-kafka-mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+Then run Codex with MCP enabled:
+
+```bash
+codex --model o4-mini
+```
+
+**Verify:** Codex will list available MCP tools at startup.
+
+---
+
+#### Zed
+
+Open **Settings** (`Cmd+,`) and add to your `settings.json` under `"context_servers"`:
+
+```json
+{
+  "context_servers": {
+    "kafka-mi": {
+      "command": {
+        "path": "node",
+        "args": ["/absolute/path/to/wso2-mi-kafka-mcp-server/dist/index.js"]
+      },
+      "settings": {}
+    }
+  }
+}
+```
+
+**Restart:** Reload Zed.
+**Verify:** Open the Assistant panel → the server tools should be available.
+
+---
+
+#### Continue.dev
+
+Add to your Continue config file (`~/.continue/config.yaml` or `.continue/config.yaml`):
+
+```yaml
+mcpServers:
+  - name: kafka-mi
+    command: node
+    args:
+      - /absolute/path/to/wso2-mi-kafka-mcp-server/dist/index.js
+```
+
+**Restart:** Reload the Continue extension.
+**Verify:** MCP tools should appear in the Continue tool panel.
+
+---
+
+#### Any other MCP client
+
+This server works with **any client that supports the MCP stdio transport**. The universal config pattern is:
+
+| Field | Value |
+|-------|-------|
+| **Command** | `node` |
+| **Args** | `["/absolute/path/to/wso2-mi-kafka-mcp-server/dist/index.js"]` |
+| **Transport** | stdio (default) |
+
+The server exposes 26 tools. Once connected, say `"setup kafka and mi"` to start.
 
 ### Step 5: Run your first setup
 
-Make sure Docker is running, then open Claude and type:
+Make sure Docker is running, then open your AI client and type:
 
 ```
 setup kafka and mi
 ```
 
-Claude will call the `setup_kafka_and_mi` tool. This takes 3–5 minutes on the first run because it downloads Docker images and builds the WSO2 MI container. You'll see progress output as it:
+Your AI agent will present two options:
+
+- **Option A: Docker Hub image** — Pulls the official WSO2 MI image. No local files needed. Best for most users.
+- **Option B: Local MI pack** — Uses a `wso2mi-<version>.zip` you provide. For custom builds or enterprise packs.
+
+Pick one (e.g. "Use Docker Hub image" or "Use local MI pack"). The agent then runs the full setup, which takes 3–5 minutes on the first run:
 
 1. Checks Docker and Node.js are available
 2. Generates all project files in `~/kafka-mi-demo`
@@ -112,7 +239,7 @@ Claude will call the `setup_kafka_and_mi` tool. This takes 3–5 minutes on the 
 
 ### Step 6: Confirm it worked
 
-After setup completes, tell Claude:
+After setup completes, tell your AI agent:
 
 ```
 run health checks
@@ -129,7 +256,7 @@ All checks should pass. You can also verify manually:
 
 ## Your First 10 Minutes
 
-Once the stack is running, try these prompts in order:
+Once the stack is running, try these prompts in your AI client:
 
 ### 1. Run the demo
 
@@ -219,11 +346,12 @@ HTTP Client ──POST /kafka/publish──> WSO2 MI ──kafkaTransport──>
 
 ## Common Prompts by Purpose
 
-Copy-paste these into Claude to use the MCP tools.
+Copy-paste these into your AI client to use the MCP tools.
 
 **Stack management:**
 ```
-setup kafka and mi
+setup kafka and mi              (shows option menu first)
+get mi config
 stack status
 show logs for wso2mi
 start stack
@@ -286,18 +414,19 @@ Expected response:
 
 This is useful for verifying the stack works independently of Claude, or for scripted testing.
 
-## Full MCP Tools Reference (25)
+## Full MCP Tools Reference (26)
 
 ### Stack Management
 
 | Tool | Description |
 |------|-------------|
-| `setup_kafka_and_mi` | Full automated setup — prerequisites, build, start, topics, smoke test |
+| `setup_kafka_and_mi` | Full automated setup — prerequisites, build, start, topics, smoke test. Supports Docker Hub or local MI pack. |
 | `start_stack` | Start all containers |
 | `stop_stack` | Stop all containers (preserves data) |
 | `stack_status` | Show container health, topics, API availability |
 | `show_logs` | View recent logs (all or per service: wso2mi, kafka, zookeeper, kafka-ui) |
 | `reset_environment` | Stop + remove all containers and volumes (requires confirm=true) |
+| `get_mi_config` | Show current MI source (Docker Hub or local pack), version, and available options |
 
 ### Demo & Testing
 
@@ -361,12 +490,19 @@ Error: port is already allocated
 
 Another service is using one of the required ports (8090, 8290, 8253, 9092, 9164). Stop the conflicting service or change the port in `docker-compose.yml`.
 
-### Claude doesn't see the MCP server
+### AI client doesn't see the MCP server
 
 - **Did you build?** Run `npm run build` — the `dist/index.js` file must exist.
 - **Is the path correct?** The path in your config must be absolute (starts with `/` on macOS/Linux or `C:\` on Windows), not relative.
-- **Did you restart?** Claude Desktop needs a full quit and reopen after config changes.
-- **Check Claude Code:** Run `claude mcp list` to verify registration.
+- **Did you restart?** Most clients need a restart or window reload after config changes.
+- **Client-specific checks:**
+  - **Claude Desktop:** Fully quit and reopen (not just close window). Look for the tools icon.
+  - **Claude Code:** Run `claude mcp list` to verify registration.
+  - **Cursor:** Settings → MCP → check `kafka-mi` connection status.
+  - **Windsurf:** MCP Servers panel → check `kafka-mi` is active.
+  - **Codex:** Check that `~/.codex/config.json` has the correct path.
+  - **Zed:** Check `settings.json` → `context_servers` section.
+  - **Continue.dev:** Check `config.yaml` → `mcpServers` section.
 
 ### Containers started but not healthy yet
 
@@ -442,25 +578,59 @@ Then `setup kafka and mi` to start fresh.
 
 > Most users can skip this section. The default Docker Hub image works out of the box.
 
-The WSO2 MI container can be built from two sources:
+The `setup_kafka_and_mi` tool lets you choose between two MI sources via the `miSource` parameter:
 
-**Docker Hub image (default):** Pulls `wso2/wso2mi` automatically. No local files needed.
+### Option 1: Docker Hub image (default)
 
-```bash
-docker compose build wso2mi
+No local files needed. Tell Claude:
+
+```
+setup kafka and mi
 ```
 
-**Local distribution ZIP:** Place `wso2mi-<version>.zip` in the generated `wso2mi/` directory, then:
+Or with a specific version:
 
-```bash
-MI_DOCKERFILE=Dockerfile docker compose build wso2mi
+```
+setup kafka and mi with MI version 4.5.0
 ```
 
-**Selecting a specific MI version:** Available versions: 4.3.0, 4.4.0 (default), 4.5.0. Docker Hub also has `-alpine` and `-rocky` variants.
+Available versions: **4.3.0**, **4.4.0** (default), **4.5.0**. Append `-alpine` or `-rocky` for variants (e.g. `4.5.0-alpine`).
+
+### Option 2: Local MI distribution ZIP
+
+1. Download a WSO2 MI distribution ZIP from [WSO2](https://wso2.com/micro-integrator/)
+2. Place it in the MCP server project root: `wso2mi-kafka-mcp-server/wso2mi-4.4.0.zip`
+3. Tell Claude:
+
+```
+setup kafka and mi using local MI pack
+```
+
+The tool auto-detects the ZIP and extracts the version. If multiple ZIPs exist, specify the version explicitly:
+
+```
+setup kafka and mi using local MI pack version 4.5.0
+```
+
+### Checking current configuration
+
+```
+get mi config
+```
+
+Shows the active source, version, detected local ZIPs, and all available Docker Hub versions.
+
+### Manual build (without MCP)
 
 ```bash
-MI_DOCKERFILE=Dockerfile.dockerhub MI_VERSION=4.5.0 docker compose build wso2mi
+# Docker Hub (default)
+MI_VERSION=4.5.0 docker compose build wso2mi
+
+# Local pack
+MI_DOCKERFILE=Dockerfile MI_VERSION=4.4.0 docker compose build wso2mi
 ```
+
+Your choice is persisted in `~/kafka-mi-demo/.env` so that `start_stack` and all compose commands use the same settings automatically.
 
 ## Advanced: Extensibility
 
@@ -476,7 +646,7 @@ For power users who want to build custom integration flows:
 ```
 wso2-mi-kafka-mcp-server/
 ├── src/
-│   ├── index.ts                    # Server entry point — registers all 25 MCP tools
+│   ├── index.ts                    # Server entry point — registers all 26 MCP tools
 │   ├── types.ts                    # TypeScript interfaces for topics, messages, traces
 │   ├── tools/
 │   │   ├── setup.ts                # One-command stack setup (setup_kafka_and_mi)
@@ -490,6 +660,7 @@ wso2-mi-kafka-mcp-server/
 │   │   ├── kafka-service.ts        # Runs kafka-* CLI commands inside the Kafka container
 │   │   └── mi-service.ts           # Calls WSO2 MI management API, renders XML templates
 │   └── utils/
+│       ├── config.ts               # MI source config persistence (.env read/write)
 │       ├── docker.ts               # Docker and Compose command wrappers with timeouts
 │       ├── files.ts                # Copies resource files into the project directory
 │       ├── logger.ts               # Colored output formatting for tool results

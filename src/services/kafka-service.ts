@@ -94,24 +94,30 @@ export async function deleteTopic(topic: string): Promise<void> {
 
 /** Publish a message to a Kafka topic. */
 export async function publishMessage(msg: MessageEnvelope): Promise<void> {
-  const args = [
+  const { execa: execaFn } = await import("execa");
+
+  const producerArgs = [
     "kafka-console-producer",
     "--bootstrap-server", BS,
     "--topic", msg.topic,
   ];
   if (msg.key) {
-    args.push("--property", "parse.key=true", "--property", "key.separator=|");
+    producerArgs.push("--property", "parse.key=true", "--property", "key.separator=|");
   }
 
   const payload = msg.key ? `${msg.key}|${msg.value}` : msg.value;
 
-  // Pipe the message via stdin using echo | producer
-  const r = await exec(
-    KAFKA,
-    ["bash", "-c", `echo '${payload.replace(/'/g, "'\\''")}' | ${args.join(" ")}`],
-    30_000
+  // Use docker exec with stdin piping — no shell required, works on all OS
+  const r = await execaFn(
+    "docker",
+    ["exec", "-i", KAFKA, ...producerArgs],
+    {
+      input: payload + "\n",
+      reject: false,
+      timeout: 30_000,
+    }
   );
-  if (!r.ok) throw new Error(`Failed to publish to '${msg.topic}': ${r.stderr}`);
+  if (r.exitCode !== 0) throw new Error(`Failed to publish to '${msg.topic}': ${r.stderr}`);
 }
 
 /** Consume messages from a Kafka topic. */

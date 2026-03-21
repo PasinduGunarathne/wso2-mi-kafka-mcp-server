@@ -1,9 +1,8 @@
 // src/tools/diagnostics.ts
 // MCP tools: trace_order_flow, collect_stack_diagnostics, smoke_test_custom_flow
 
-import { execa } from "execa";
 import * as docker from "../utils/docker.js";
-import { CONTAINERS, sleep } from "../utils/docker.js";
+import { CONTAINERS, sleep, httpGet, httpRequest } from "../utils/docker.js";
 import * as kafka from "../services/kafka-service.js";
 import * as mi from "../services/mi-service.js";
 import * as log from "../utils/logger.js";
@@ -274,41 +273,28 @@ export async function smokeTestCustomFlow(args: {
   // ── Step 1: Send HTTP request ───────────────────────────────────────────
   lines.push(log.run(`[1/3] ${method} ${url}...`));
 
-  const curlArgs = [
-    "-s", "-w", "\n%{http_code}",
-    "-X", method,
-    url,
-    "--max-time", "15",
-  ];
-
+  const reqHeaders: Record<string, string> = { ...args.headers };
   if (args.body && (method === "POST" || method === "PUT" || method === "PATCH")) {
-    curlArgs.push("-d", args.body);
-    curlArgs.push("-H", "Content-Type: application/json");
+    reqHeaders["Content-Type"] = reqHeaders["Content-Type"] ?? "application/json";
   }
 
-  if (args.headers) {
-    for (const [k, v] of Object.entries(args.headers)) {
-      curlArgs.push("-H", `${k}: ${v}`);
-    }
-  }
-
-  const httpR = await docker.run("curl", curlArgs, undefined, 20_000);
-
-  // Parse response: body is everything except last line (status code)
-  const httpLines = httpR.stdout.split("\n");
-  const statusCode = parseInt(httpLines[httpLines.length - 1], 10) || 0;
-  const responseBody = httpLines.slice(0, -1).join("\n");
+  const httpR = await httpRequest(url, {
+    method,
+    body: args.body,
+    headers: Object.keys(reqHeaders).length > 0 ? reqHeaders : undefined,
+    timeoutMs: 15_000,
+  });
 
   const expectedStatus = args.expectStatus ?? 200;
-  if (statusCode === expectedStatus) {
-    lines.push(log.ok(`HTTP ${statusCode} (expected ${expectedStatus})`));
-  } else if (statusCode > 0) {
-    lines.push(log.err(`HTTP ${statusCode} (expected ${expectedStatus})`));
+  if (httpR.status === expectedStatus) {
+    lines.push(log.ok(`HTTP ${httpR.status} (expected ${expectedStatus})`));
+  } else if (httpR.status > 0) {
+    lines.push(log.err(`HTTP ${httpR.status} (expected ${expectedStatus})`));
   } else {
-    lines.push(log.err(`Request failed: ${httpR.stderr}`));
+    lines.push(log.err(`Request failed: ${httpR.error}`));
     return lines.join("\n");
   }
-  lines.push(log.info(`Response: ${responseBody.slice(0, 500)}`));
+  lines.push(log.info(`Response: ${httpR.body.slice(0, 500)}`));
   lines.push("");
 
   // ── Step 2: Verify in Kafka topic (optional) ───────────────────────────
@@ -343,7 +329,7 @@ export async function smokeTestCustomFlow(args: {
 
   // ── Step 3: Quick MI health check ──────────────────────────────────────
   lines.push(log.run("[3/3] Quick MI health check..."));
-  const healthR = await docker.run("curl", ["-sf", "http://localhost:9164/management/health"], undefined, 5_000);
+  const healthR = await httpGet("http://localhost:9164/management/health");
   if (healthR.ok) {
     lines.push(log.ok("WSO2 MI is healthy"));
   } else {

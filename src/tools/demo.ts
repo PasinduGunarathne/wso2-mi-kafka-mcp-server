@@ -1,9 +1,8 @@
 // src/tools/demo.ts
 // run_demo and run_health_checks tools
 
-import { execa } from "execa";
 import * as docker from "../utils/docker.js";
-import { CONTAINERS, sleep } from "../utils/docker.js";
+import { CONTAINERS, sleep, httpGet } from "../utils/docker.js";
 import * as log from "../utils/logger.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -148,7 +147,7 @@ export async function runHealthChecks(args: {
     return r.ok;
   });
   await check("demo-wso2mi running", async () => {
-    const r = await docker.run("curl", ["-sf", "http://localhost:9164/management/health"]);
+    const r = await httpGet("http://localhost:9164/management/health");
     return r.ok;
   });
 
@@ -169,17 +168,17 @@ export async function runHealthChecks(args: {
   lines.push("");
   lines.push("── WSO2 MI APIs ───────────────────────────────────────────────");
   await check("KafkaPublisherAPI /kafka/health", async () => {
-    const r = await docker.run("curl", ["-sf", "http://localhost:8290/kafka/health"]);
+    const r = await httpGet("http://localhost:8290/kafka/health");
     return r.ok;
   });
   await check("Management API accessible", async () => {
-    const r = await docker.run("curl", ["-sf", "http://localhost:9164/management/apis"]);
+    const r = await httpGet("http://localhost:9164/management/apis");
     return r.ok;
   });
 
   // Check deployed API via management
   await check("KafkaPublisherAPI deployed in MI", async () => {
-    const r = await docker.run("curl", ["-sf", "http://localhost:9164/management/apis"]);
+    const r = await httpGet("http://localhost:9164/management/apis");
     return r.ok && r.stdout.includes("KafkaPublisher");
   });
 
@@ -207,14 +206,18 @@ export async function runHealthChecks(args: {
 // ─────────────────────────────────────────────────────────────────────────────
 async function httpPost(url: string, body: object): Promise<{ ok: boolean; body?: string; error?: string }> {
   try {
-    const r = await execa("curl", [
-      "-sf", "-X", "POST", url,
-      "-H", "Content-Type: application/json",
-      "-d", JSON.stringify(body),
-      "--max-time", "10",
-    ], { reject: false });
-    if (r.exitCode === 0) return { ok: true, body: r.stdout };
-    return { ok: false, error: r.stderr || `Exit code ${r.exitCode}` };
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    const text = await res.text();
+    if (res.ok) return { ok: true, body: text };
+    return { ok: false, error: `HTTP ${res.status}: ${text}` };
   } catch (e: any) {
     return { ok: false, error: e.message };
   }
@@ -222,15 +225,14 @@ async function httpPost(url: string, body: object): Promise<{ ok: boolean; body?
 
 async function readKafkaTopic(topic: string, maxMessages = 5): Promise<string[]> {
   try {
-    const r = await execa("docker", [
-      "exec", CONTAINERS.KAFKA,
+    const r = await docker.exec(CONTAINERS.KAFKA, [
       "kafka-console-consumer",
       "--bootstrap-server", "localhost:9092",
       "--topic", topic,
       "--from-beginning",
       "--max-messages", String(maxMessages),
       "--timeout-ms", "5000",
-    ], { reject: false, timeout: 15_000 });
+    ], 15_000);
     return r.stdout
       .split("\n")
       .map(l => l.trim())
@@ -309,7 +311,7 @@ export async function triggerError(args: {
   lines.push(log.run("[2/3] Waiting for consumer to process and trigger error (up to 10s)..."));
   await sleep(6000);
 
-  const miLogs = await docker.composeLogs("", "wso2mi", 40);
+  const miLogs = await docker.composeLogs(undefined, "wso2mi", 40);
   const faultEvidence = miLogs.stdout.includes("KAFKA-FAULT") ||
                         miLogs.stdout.includes("sent to DLQ");
   const errorEvidence = miLogs.stdout.includes("PROCESSING_ERROR") ||

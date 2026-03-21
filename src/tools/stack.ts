@@ -1,9 +1,13 @@
 // src/tools/stack.ts
-// start_stack, stop_stack, stack_status, show_logs, reset_environment
+// start_stack, stop_stack, stack_status, show_logs, reset_environment, get_mi_config
 
 import * as docker from "../utils/docker.js";
-import { CONTAINERS } from "../utils/docker.js";
+import { CONTAINERS, httpGet } from "../utils/docker.js";
 import { projectDir } from "../utils/files.js";
+import {
+  readConfig, detectLocalZips, formatConfig,
+  DOCKERHUB_VERSIONS, DOCKERHUB_VARIANTS,
+} from "../utils/config.js";
 import * as log from "../utils/logger.js";
 
 function getDir(p?: string) { return projectDir(p); }
@@ -13,7 +17,14 @@ export async function startStack(args: { projectPath?: string }): Promise<string
   const dir = getDir(args.projectPath);
   const lines: string[] = [];
 
+  // Read persisted config for display
+  const config = await readConfig(dir);
+  if (config) {
+    lines.push(log.info(`MI source: ${formatConfig(config)}`));
+  }
+
   lines.push(log.run("Starting Kafka + WSO2 MI stack..."));
+  // Docker Compose reads .env from projectDir automatically — no explicit env needed
   const r = await docker.composeUp(dir);
 
   if (!r.ok) {
@@ -57,6 +68,13 @@ export async function stackStatus(args: { projectPath?: string }): Promise<strin
 
   lines.push("🔍  Checking stack status...\n");
 
+  // Show MI config if available
+  const config = await readConfig(dir);
+  if (config) {
+    lines.push(log.info(`MI source: ${formatConfig(config)}`));
+    lines.push("");
+  }
+
   // Container status
   const psR = await docker.composePs(dir);
 
@@ -81,21 +99,21 @@ export async function stackStatus(args: { projectPath?: string }): Promise<strin
     {
       name: "Kafka UI",
       fn: async () => {
-        const r = await docker.run("curl", ["-sf", "http://localhost:8090"]);
+        const r = await httpGet("http://localhost:8090");
         return r.ok;
       },
     },
     {
       name: "WSO2 MI (health)",
       fn: async () => {
-        const r = await docker.run("curl", ["-sf", "http://localhost:9164/management/health"]);
+        const r = await httpGet("http://localhost:9164/management/health");
         return r.ok;
       },
     },
     {
       name: "WSO2 MI (publish API)",
       fn: async () => {
-        const r = await docker.run("curl", ["-sf", "http://localhost:8290/kafka/health"]);
+        const r = await httpGet("http://localhost:8290/kafka/health");
         return r.ok;
       },
     },
@@ -176,5 +194,62 @@ export async function resetEnvironment(args: {
 
   lines.push(log.ok("Environment reset. All containers and volumes removed."));
   lines.push(log.info("Run setup_kafka_and_mi to set up fresh."));
+  return lines.join("\n");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// get_mi_config — read-only tool to show current MI configuration
+// ─────────────────────────────────────────────────────────────────────────────
+export async function getMiConfig(args: { projectPath?: string }): Promise<string> {
+  const dir = getDir(args.projectPath);
+  const lines: string[] = [];
+
+  lines.push(log.header("🐳  WSO2 MI Configuration"));
+  lines.push("");
+
+  // 1. Current persisted config
+  const config = await readConfig(dir);
+  if (config) {
+    lines.push("Current configuration:");
+    lines.push(log.ok(`Source:  ${config.miSource === "local" ? "Local MI distribution ZIP" : "Docker Hub image"}`));
+    lines.push(log.ok(`Version: ${config.miVersion}`));
+    lines.push(log.ok(`Image:   ${config.miSource === "local" ? `eclipse-temurin:17-jre-jammy + wso2mi-${config.miVersion}.zip` : `wso2/wso2mi:${config.miVersion}`}`));
+    lines.push(log.info(`Config:  ${dir}/.env`));
+  } else {
+    lines.push(log.warn("No configuration found. Run setup_kafka_and_mi first."));
+  }
+  lines.push("");
+
+  // 2. Detected local ZIPs
+  const zips = await detectLocalZips(dir);
+  if (zips.length > 0) {
+    lines.push("Detected local MI distribution ZIPs:");
+    for (const z of zips) {
+      lines.push(`    wso2mi-${z.version}.zip  (${z.location}: ${z.path})`);
+    }
+  } else {
+    lines.push("No local MI distribution ZIPs detected.");
+  }
+  lines.push("");
+
+  // 3. Available Docker Hub versions
+  lines.push("Available Docker Hub versions:");
+  for (const ver of DOCKERHUB_VERSIONS) {
+    const variants = DOCKERHUB_VARIANTS.map(v => `${ver}${v}`).join(", ");
+    lines.push(`    ${ver}  (variants: ${variants})`);
+  }
+  lines.push("");
+
+  // 4. How to switch
+  lines.push("To change MI source, run setup with:");
+  lines.push("");
+  lines.push("  Docker Hub (default):");
+  lines.push('    setup_kafka_and_mi { "miSource": "dockerhub", "miVersion": "4.4.0" }');
+  lines.push("");
+  lines.push("  Local MI pack:");
+  lines.push('    setup_kafka_and_mi { "miSource": "local", "miVersion": "4.4.0" }');
+  lines.push("");
+  lines.push(log.info("Changing source requires a full rebuild (the setup tool handles this)."));
+
   return lines.join("\n");
 }

@@ -2,6 +2,7 @@
 // Generates the complete kafka-mi-demo project on disk
 // by copying resource files from the resources/ directory.
 
+import os from "os";
 import fs from "fs-extra";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -15,11 +16,16 @@ const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const RESOURCES_DIR = path.join(PROJECT_ROOT, "resources");
 
+/** Returns the absolute path to the MCP server project root. */
+export function getProjectRoot(): string {
+  return PROJECT_ROOT;
+}
+
 /** Returns the absolute path to the demo project directory. */
 export function projectDir(base?: string): string {
   return base
     ? path.resolve(base)
-    : path.join(process.env.HOME ?? process.env.USERPROFILE ?? ".", PROJECT_NAME);
+    : path.join(os.homedir(), PROJECT_NAME);
 }
 
 /** Read a resource file from the resources/ directory. */
@@ -53,12 +59,15 @@ export async function generateProjectFiles(baseDir: string): Promise<string[]> {
   await w("wso2mi/Dockerfile.dockerhub",    resource("docker", "Dockerfile.dockerhub"));
   await w("wso2mi/conf/deployment.toml",    resource("conf", "deployment.toml"));
 
-  // Copy the local MI distribution zip into the Docker build context (if it exists)
-  const miZipSrc = path.join(PROJECT_ROOT, "wso2mi-4.4.0.zip");
-  const miZipDest = path.join(baseDir, "wso2mi", "wso2mi-4.4.0.zip");
-  if (await fs.pathExists(miZipSrc)) {
-    await fs.copy(miZipSrc, miZipDest);
-    created.push(miZipDest);
+  // Copy any local MI distribution ZIPs into the Docker build context (if they exist)
+  const rootFiles = await fs.readdir(PROJECT_ROOT);
+  for (const file of rootFiles) {
+    if (file.startsWith("wso2mi-") && file.endsWith(".zip")) {
+      const src = path.join(PROJECT_ROOT, file);
+      const dest = path.join(baseDir, "wso2mi", file);
+      await fs.copy(src, dest);
+      created.push(dest);
+    }
   }
 
   // WSO2 MI artifacts

@@ -5,7 +5,7 @@
  * MCP Server for a local Kafka + WSO2 Micro Integrator integration platform.
  *
  * Stack Management:  setup_kafka_and_mi, start_stack, stop_stack, stack_status,
- *                    reset_environment, show_logs
+ *                    reset_environment, show_logs, get_mi_config
  * Demo & Testing:    run_demo, trigger_error, check_dlq, run_health_checks
  * Kafka Admin:       list_kafka_topics, describe_kafka_topic, create_kafka_topic,
  *                    delete_kafka_topic
@@ -28,7 +28,7 @@ import {
 import { setupKafkaAndMI }  from "./tools/setup.js";
 import { runDemo, runHealthChecks, triggerError, checkDLQ } from "./tools/demo.js";
 import {
-  startStack, stopStack, stackStatus, showLogs, resetEnvironment,
+  startStack, stopStack, stackStatus, showLogs, resetEnvironment, getMiConfig,
 } from "./tools/stack.js";
 import {
   listKafkaTopics, describeKafkaTopic, createKafkaTopic, deleteKafkaTopic,
@@ -52,6 +52,7 @@ const HANDLERS: Record<string, (args: any) => Promise<string>> = {
   stack_status:         stackStatus,
   show_logs:            showLogs,
   reset_environment:    resetEnvironment,
+  get_mi_config:        getMiConfig,
   // Demo & testing
   run_demo:             runDemo,
   run_health_checks:    runHealthChecks,
@@ -86,15 +87,19 @@ const TOOLS = [
   {
     name: "setup_kafka_and_mi",
     description:
-      "Fully automated setup of Apache Kafka + WSO2 Micro Integrator. " +
-      "Checks prerequisites, generates all config files, builds Docker images, " +
-      "starts the stack, creates Kafka topics, deploys WSO2 MI flows, runs a smoke test. " +
+      "Setup Apache Kafka + WSO2 Micro Integrator integration stack. " +
+      "When called WITHOUT miSource, shows an interactive menu to choose between Docker Hub image or local MI pack. " +
+      "When called WITH miSource, runs the full automated setup: prerequisites, build, start, topics, smoke test. " +
+      "IMPORTANT: Always call this tool first without miSource to show the user the options. " +
+      "Then call again with the user's choice. " +
       "Trigger phrases: 'setup kafka and mi', 'start kafka', 'setup integration stack'.",
     inputSchema: {
       type: "object",
       properties: {
-        projectPath: { type: "string", description: "Directory where the project will be created (default: ~/kafka-mi-demo)" },
+        projectPath: { type: "string",  description: "Directory where the project will be created (default: <home>/kafka-mi-demo)." },
         skipBuild:   { type: "boolean", description: "Skip Docker image build (use cached images). Default: false." },
+        miSource:    { type: "string",  enum: ["dockerhub", "local"], description: "MI image source. 'dockerhub' pulls the official WSO2 image. 'local' uses a wso2mi-<version>.zip. OMIT this to show the option menu first." },
+        miVersion:   { type: "string",  description: "WSO2 MI version. Docker Hub: 4.3.0, 4.4.0, 4.5.0 (append -alpine or -rocky for variants). Local: must match the ZIP filename. Default: 4.4.0." },
       },
     },
   },
@@ -104,7 +109,7 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        projectPath: { type: "string", description: "Project directory (default: ~/kafka-mi-demo)" },
+        projectPath: { type: "string", description: "Project directory (default: <home>/kafka-mi-demo)" },
       },
     },
   },
@@ -138,6 +143,19 @@ const TOOLS = [
       properties: {
         projectPath: { type: "string" },
         confirm:     { type: "boolean", description: "Must be true to confirm." },
+      },
+    },
+  },
+  {
+    name: "get_mi_config",
+    description:
+      "Show the current WSO2 MI configuration — whether it uses Docker Hub or a local pack, " +
+      "the MI version, detected local ZIP files, and available Docker Hub versions. " +
+      "Trigger phrases: 'what MI version', 'show mi config', 'which MI image', 'get mi config'.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        projectPath: { type: "string", description: "Project directory (default: <home>/kafka-mi-demo)." },
       },
     },
   },

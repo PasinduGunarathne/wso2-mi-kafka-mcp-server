@@ -14,15 +14,41 @@ export const CONTAINERS = {
   WSO2MI: "demo-wso2mi",
 } as const;
 
-/** Extra bin directories to prepend to PATH for container runtimes. */
-const EXTRA_PATHS = [
-  path.join(os.homedir(), ".rd", "bin"),   // Rancher Desktop (symlinked)
-  "/Applications/Rancher Desktop.app/Contents/Resources/resources/darwin/bin", // Rancher Desktop (macOS direct)
-];
+/** Extra bin directories to prepend to PATH for container runtimes (cross-platform). */
+function extraPaths(): string[] {
+  const home = os.homedir();
+  const paths: string[] = [
+    // Rancher Desktop — all platforms create ~/.rd/bin symlinks
+    path.join(home, ".rd", "bin"),
+  ];
+
+  switch (process.platform) {
+    case "darwin":
+      paths.push("/Applications/Rancher Desktop.app/Contents/Resources/resources/darwin/bin");
+      // Docker Desktop for macOS
+      paths.push("/usr/local/bin");
+      break;
+    case "win32":
+      // Rancher Desktop for Windows
+      paths.push(path.join(home, "AppData", "Local", "Programs", "Rancher Desktop", "resources", "resources", "win32", "bin"));
+      // Docker Desktop for Windows
+      paths.push("C:\\Program Files\\Docker\\Docker\\resources\\bin");
+      break;
+    case "linux":
+      // Docker typically available in standard paths
+      paths.push("/usr/bin");
+      paths.push("/usr/local/bin");
+      // Rancher Desktop AppImage on Linux
+      paths.push(path.join(home, ".local", "bin"));
+      break;
+  }
+
+  return paths;
+}
 
 function extendedPath(): string {
   const current = process.env.PATH ?? "";
-  const dirs = EXTRA_PATHS.filter((d) => !current.split(path.delimiter).includes(d));
+  const dirs = extraPaths().filter((d) => !current.split(path.delimiter).includes(d));
   return dirs.length > 0 ? dirs.join(path.delimiter) + path.delimiter + current : current;
 }
 
@@ -37,14 +63,25 @@ export async function run(
   cmd: string,
   args: string[],
   cwd?: string,
-  timeoutMs?: number
+  timeoutOrEnv?: number | Record<string, string>,
+  extraEnv?: Record<string, string>,
 ): Promise<RunResult> {
+  // Flexible signature: run(cmd, args, cwd, timeoutMs) or run(cmd, args, cwd, envObj) or run(cmd, args, cwd, timeoutMs, envObj)
+  let timeoutMs: number | undefined;
+  let env: Record<string, string> = {};
+  if (typeof timeoutOrEnv === "number") {
+    timeoutMs = timeoutOrEnv;
+    if (extraEnv) env = extraEnv;
+  } else if (timeoutOrEnv && typeof timeoutOrEnv === "object") {
+    env = timeoutOrEnv;
+  }
+
   try {
     const result = await execa(cmd, args, {
       cwd: cwd || undefined,
       reject: false,
       all: true,
-      env: { PATH: extendedPath() },
+      env: { PATH: extendedPath(), ...env },
       timeout: timeoutMs,
     });
     return {
@@ -66,8 +103,8 @@ export async function which(bin: string): Promise<boolean> {
 }
 
 /** docker compose up -d with build. */
-export async function composeUp(projectDir: string, file = "docker-compose.yml"): Promise<RunResult> {
-  return run("docker", ["compose", "-f", file, "up", "-d", "--build", "--remove-orphans"], projectDir, 600_000);
+export async function composeUp(projectDir: string, file = "docker-compose.yml", env?: Record<string, string>): Promise<RunResult> {
+  return run("docker", ["compose", "-f", file, "up", "-d", "--build", "--remove-orphans"], projectDir, 600_000, env);
 }
 
 /** docker compose down -v. */
@@ -147,4 +184,51 @@ export async function exec(
 
 export function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * HTTP GET with timeout using native fetch (Node 18+).
+ * Cross-platform replacement for `curl -sf <url>`.
+ */
+export async function httpGet(url: string, timeoutMs = 5_000): Promise<RunResult> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    const body = await res.text();
+    return { stdout: body, stderr: "", ok: res.ok };
+  } catch (e: any) {
+    return { stdout: "", stderr: e.message, ok: false };
+  }
+}
+
+/**
+ * HTTP request with timeout using native fetch (Node 18+).
+ * Cross-platform replacement for curl.
+ */
+export async function httpRequest(
+  url: string,
+  opts: {
+    method?: string;
+    body?: string;
+    headers?: Record<string, string>;
+    timeoutMs?: number;
+  } = {}
+): Promise<{ ok: boolean; status: number; body: string; error?: string }> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? 15_000);
+    const res = await fetch(url, {
+      method: opts.method ?? "GET",
+      headers: opts.headers,
+      body: opts.body,
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    const body = await res.text();
+    return { ok: res.ok, status: res.status, body };
+  } catch (e: any) {
+    return { ok: false, status: 0, body: "", error: e.message };
+  }
 }

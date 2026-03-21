@@ -4,7 +4,7 @@
 import fs from "fs-extra";
 import path from "path";
 import { fileURLToPath } from "url";
-import { run, exec, CONTAINERS, composeLogs } from "../utils/docker.js";
+import { run, exec, CONTAINERS, composeLogs, httpGet } from "../utils/docker.js";
 import type { ArtifactTemplateInput, ArtifactValidationResult } from "../types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -12,47 +12,33 @@ const TEMPLATES_DIR = path.resolve(__dirname, "../../resources/templates");
 
 // ── Management API ──────────────────────────────────────────────────────────
 
-/** List deployed APIs via the MI management API. */
-export async function listDeployedApis(): Promise<string[]> {
-  const r = await run("curl", ["-sf", "http://localhost:9164/management/apis"], undefined, 10_000);
+/** Fetch a MI management API endpoint and parse the name list. */
+async function fetchMiList(endpoint: string): Promise<string[]> {
+  const r = await httpGet(`http://localhost:9164/management/${endpoint}`, 10_000);
   if (!r.ok) return [];
   try {
     const data = JSON.parse(r.stdout);
-    // MI returns { count: N, list: [{ name, ... }] }
     if (Array.isArray(data.list)) return data.list.map((a: any) => a.name);
     if (Array.isArray(data)) return data.map((a: any) => a.name);
     return [];
   } catch {
     return [];
   }
+}
+
+/** List deployed APIs via the MI management API. */
+export async function listDeployedApis(): Promise<string[]> {
+  return fetchMiList("apis");
 }
 
 /** List deployed inbound endpoints via MI management API. */
 export async function listInboundEndpoints(): Promise<string[]> {
-  const r = await run("curl", ["-sf", "http://localhost:9164/management/inbound-endpoints"], undefined, 10_000);
-  if (!r.ok) return [];
-  try {
-    const data = JSON.parse(r.stdout);
-    if (Array.isArray(data.list)) return data.list.map((a: any) => a.name);
-    if (Array.isArray(data)) return data.map((a: any) => a.name);
-    return [];
-  } catch {
-    return [];
-  }
+  return fetchMiList("inbound-endpoints");
 }
 
 /** List deployed sequences via MI management API. */
 export async function listSequences(): Promise<string[]> {
-  const r = await run("curl", ["-sf", "http://localhost:9164/management/sequences"], undefined, 10_000);
-  if (!r.ok) return [];
-  try {
-    const data = JSON.parse(r.stdout);
-    if (Array.isArray(data.list)) return data.list.map((a: any) => a.name);
-    if (Array.isArray(data)) return data.map((a: any) => a.name);
-    return [];
-  } catch {
-    return [];
-  }
+  return fetchMiList("sequences");
 }
 
 /** Get recent MI error logs. */

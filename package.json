@@ -1,7 +1,7 @@
 {
   "name": "kafka-mi-mcp-server",
   "version": "2.0.0",
-  "description": "MCP Server — complete local Kafka + WSO2 MI integration engineering platform (25 tools)",
+  "description": "MCP Server — complete local Kafka + WSO2 MI integration engineering platform (26 tools). Works with Claude Desktop, Claude Code, Cursor, Windsurf, Codex, Zed, Continue.dev, and any MCP-compatible client.",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
