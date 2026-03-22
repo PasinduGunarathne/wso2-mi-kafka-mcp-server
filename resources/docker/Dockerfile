@@ -12,7 +12,7 @@ ARG MI_HOME=/home/wso2carbon/wso2mi-${MI_VERSION}
 
 # ── 0. Install utilities ─────────────────────────────────────────────────────────
 RUN apt-get update -qq && apt-get install -y --no-install-recommends \
-    curl ca-certificates unzip netcat-openbsd \
+    curl ca-certificates unzip zip netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 # ── 1. Create wso2carbon user ────────────────────────────────────────────────────
@@ -93,7 +93,7 @@ RUN curl -fsSL \
       " org.apache.avro.specific;version=\"${AVRO_VER}\"," \
       " org.apache.avro.util;version=\"${AVRO_VER}\"" \
       > META-INF/MANIFEST.MF \
-    && jar cfm ${MI_HOME}/dropins/org.apache.avro-${AVRO_VER}.jar META-INF/MANIFEST.MF -C /tmp/avro-osgi . \
+    && cd /tmp/avro-osgi && zip -qr ${MI_HOME}/dropins/org.apache.avro-${AVRO_VER}.jar . \
     && rm -rf /tmp/avro-osgi /tmp/avro-original.jar
 
 # ── 7. Copy WSO2 MI configuration ───────────────────────────────────────────────

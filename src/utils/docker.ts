@@ -191,15 +191,16 @@ export function sleep(ms: number): Promise<void> {
  * Cross-platform replacement for `curl -sf <url>`.
  */
 export async function httpGet(url: string, timeoutMs = 5_000): Promise<RunResult> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
     const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timer);
     const body = await res.text();
     return { stdout: body, stderr: "", ok: res.ok };
   } catch (e: any) {
     return { stdout: "", stderr: e.message, ok: false };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -216,19 +217,20 @@ export async function httpRequest(
     timeoutMs?: number;
   } = {}
 ): Promise<{ ok: boolean; status: number; body: string; error?: string }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? 15_000);
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? 15_000);
     const res = await fetch(url, {
       method: opts.method ?? "GET",
       headers: opts.headers,
       body: opts.body,
       signal: controller.signal,
     });
-    clearTimeout(timer);
     const body = await res.text();
     return { ok: res.ok, status: res.status, body };
   } catch (e: any) {
     return { ok: false, status: 0, body: "", error: e.message };
+  } finally {
+    clearTimeout(timer);
   }
 }

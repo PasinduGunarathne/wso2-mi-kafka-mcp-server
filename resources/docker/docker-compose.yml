@@ -97,7 +97,7 @@ services:
     volumes:
       - mi-logs:/home/wso2carbon/wso2mi-${MI_VERSION:-4.4.0}/repository/logs
     healthcheck:
-      test: ["CMD", "bash", "-c", "nc -z localhost 8290"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:9164/management/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 15

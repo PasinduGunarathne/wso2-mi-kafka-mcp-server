@@ -205,21 +205,22 @@ export async function runHealthChecks(args: {
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 async function httpPost(url: string, body: object): Promise<{ ok: boolean; body?: string; error?: string }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10_000);
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
       signal: controller.signal,
     });
-    clearTimeout(timer);
     const text = await res.text();
     if (res.ok) return { ok: true, body: text };
     return { ok: false, error: `HTTP ${res.status}: ${text}` };
   } catch (e: any) {
     return { ok: false, error: e.message };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
