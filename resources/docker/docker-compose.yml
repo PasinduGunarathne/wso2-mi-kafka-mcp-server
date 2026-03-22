@@ -82,7 +82,7 @@ services:
       context: ./wso2mi
       dockerfile: ${MI_DOCKERFILE:-Dockerfile.dockerhub}
       args:
-        MI_VERSION: ${MI_VERSION:-4.4.0}
+        MI_VERSION: ${MI_VERSION:-4.5.0}
     container_name: demo-wso2mi
     networks: [kafka-mi-net]
     depends_on:
@@ -95,7 +95,7 @@ services:
     environment:
       KAFKA_BOOTSTRAP: "kafka:29092"
     volumes:
-      - mi-logs:/home/wso2carbon/wso2mi-${MI_VERSION:-4.4.0}/repository/logs
+      - mi-logs:/home/wso2carbon/wso2mi-${MI_VERSION:-4.5.0}/repository/logs
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:9164/management/health || exit 1"]
       interval: 15s

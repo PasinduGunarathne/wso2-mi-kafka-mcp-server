@@ -3,9 +3,9 @@
 #
 # Requires: wso2mi-<VERSION>.zip placed in the build context directory.
 
-ARG MI_VERSION=4.4.0
+ARG MI_VERSION=4.5.0
 
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:21-jre-jammy
 
 ARG MI_VERSION
 ARG MI_HOME=/home/wso2carbon/wso2mi-${MI_VERSION}

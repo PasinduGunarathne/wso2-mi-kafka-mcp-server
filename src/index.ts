@@ -99,7 +99,7 @@ const TOOLS = [
         projectPath: { type: "string",  description: "Directory where the project will be created (default: <home>/kafka-mi-demo)." },
         skipBuild:   { type: "boolean", description: "Skip Docker image build (use cached images). Default: false." },
         miSource:    { type: "string",  enum: ["dockerhub", "local"], description: "MI image source. 'dockerhub' pulls the official WSO2 image. 'local' uses a wso2mi-<version>.zip. OMIT this to show the option menu first." },
-        miVersion:   { type: "string",  description: "WSO2 MI version. Docker Hub: 4.3.0, 4.4.0, 4.5.0 (append -alpine or -rocky for variants). Local: must match the ZIP filename. Default: 4.4.0." },
+        miVersion:   { type: "string",  description: "WSO2 MI version. Docker Hub: 4.3.0, 4.4.0, 4.5.0 (append -alpine or -rocky for variants). Local: must match the ZIP filename. Default: 4.5.0." },
       },
     },
   },

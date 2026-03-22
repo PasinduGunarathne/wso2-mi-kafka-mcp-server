@@ -594,7 +594,7 @@ Or with a specific version:
 setup kafka and mi with MI version 4.5.0
 ```
 
-Available versions: **4.3.0**, **4.4.0** (default), **4.5.0**. Append `-alpine` or `-rocky` for variants (e.g. `4.5.0-alpine`).
+Available versions: **4.3.0**, **4.4.0**, **4.5.0** (default). Append `-alpine` or `-rocky` for variants (e.g. `4.5.0-alpine`).
 
 ### Option 2: Local MI distribution ZIP
 
@@ -627,7 +627,7 @@ Shows the active source, version, detected local ZIPs, and all available Docker 
 MI_VERSION=4.5.0 docker compose build wso2mi
 
 # Local pack
-MI_DOCKERFILE=Dockerfile MI_VERSION=4.4.0 docker compose build wso2mi
+MI_DOCKERFILE=Dockerfile MI_VERSION=4.5.0 docker compose build wso2mi
 ```
 
 Your choice is persisted in `~/kafka-mi-demo/.env` so that `start_stack` and all compose commands use the same settings automatically.

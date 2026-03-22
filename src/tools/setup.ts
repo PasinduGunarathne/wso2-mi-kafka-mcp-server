@@ -11,7 +11,7 @@ import { CONTAINERS } from "../utils/docker.js";
 import { generateProjectFiles, projectDir, getProjectRoot } from "../utils/files.js";
 import {
   sourceToDockerfile, detectLocalZips, writeConfig, formatConfig,
-  DOCKERHUB_VERSIONS, DOCKERHUB_VARIANTS,
+  DEFAULT_MI_VERSION, DOCKERHUB_VERSIONS, DOCKERHUB_VARIANTS,
   type MiSource, type MiConfig,
 } from "../utils/config.js";
 import * as log from "../utils/logger.js";
@@ -172,7 +172,7 @@ async function runFullSetup(
   }
 
   // Default version for Docker Hub
-  if (!miVersion) miVersion = "4.4.0";
+  if (!miVersion) miVersion = DEFAULT_MI_VERSION;
 
   const config: MiConfig = { miSource, miDockerfile, miVersion };
   out(log.info(`MI source: ${formatConfig(config)}`));

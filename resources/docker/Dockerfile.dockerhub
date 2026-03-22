@@ -5,7 +5,7 @@
 # Available versions: 4.3.0, 4.4.0, 4.5.0
 # Variants: <version>, <version>-alpine, <version>-rocky
 
-ARG MI_VERSION=4.4.0
+ARG MI_VERSION=4.5.0
 FROM wso2/wso2mi:${MI_VERSION}
 
 ARG MI_VERSION

@@ -16,7 +16,7 @@ export type MiSource = "dockerhub" | "local";
 export interface MiConfig {
   miSource: MiSource;
   miDockerfile: string;   // "Dockerfile.dockerhub" or "Dockerfile"
-  miVersion: string;      // e.g. "4.4.0", "4.5.0-alpine"
+  miVersion: string;      // e.g. "4.5.0", "4.5.0-alpine"
 }
 
 export interface DetectedZip {
@@ -25,7 +25,11 @@ export interface DetectedZip {
   location: "mcp-server-root" | "project-build-context";
 }
 
-// Known Docker Hub versions (update when WSO2 publishes new images)
+// Default MI version — single source of truth.
+// Update this constant (and DOCKERHUB_VERSIONS) when WSO2 publishes new images.
+export const DEFAULT_MI_VERSION = "4.5.0";
+
+// Known Docker Hub versions
 export const DOCKERHUB_VERSIONS = [
   "4.3.0",
   "4.4.0",
@@ -79,7 +83,7 @@ export async function readConfig(projectDir: string): Promise<MiConfig | null> {
   }
 
   const miDockerfile = vars["MI_DOCKERFILE"] ?? "Dockerfile.dockerhub";
-  const miVersion = vars["MI_VERSION"] ?? "4.4.0";
+  const miVersion = vars["MI_VERSION"] ?? DEFAULT_MI_VERSION;
   return {
     miSource: dockerfileToSource(miDockerfile),
     miDockerfile,

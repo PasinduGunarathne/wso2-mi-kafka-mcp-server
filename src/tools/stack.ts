@@ -6,7 +6,7 @@ import { CONTAINERS, httpGet } from "../utils/docker.js";
 import { projectDir } from "../utils/files.js";
 import {
   readConfig, detectLocalZips, formatConfig,
-  DOCKERHUB_VERSIONS, DOCKERHUB_VARIANTS,
+  DEFAULT_MI_VERSION, DOCKERHUB_VERSIONS, DOCKERHUB_VARIANTS,
 } from "../utils/config.js";
 import * as log from "../utils/logger.js";
 
@@ -244,10 +244,10 @@ export async function getMiConfig(args: { projectPath?: string }): Promise<strin
   lines.push("To change MI source, run setup with:");
   lines.push("");
   lines.push("  Docker Hub (default):");
-  lines.push('    setup_kafka_and_mi { "miSource": "dockerhub", "miVersion": "4.4.0" }');
+  lines.push(`    setup_kafka_and_mi { "miSource": "dockerhub", "miVersion": "${DEFAULT_MI_VERSION}" }`);
   lines.push("");
   lines.push("  Local MI pack:");
-  lines.push('    setup_kafka_and_mi { "miSource": "local", "miVersion": "4.4.0" }');
+  lines.push(`    setup_kafka_and_mi { "miSource": "local", "miVersion": "${DEFAULT_MI_VERSION}" }`);
   lines.push("");
   lines.push(log.info("Changing source requires a full rebuild (the setup tool handles this)."));
 
